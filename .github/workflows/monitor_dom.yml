@@ -2,10 +2,8 @@ name: Monitor Diário Oficial
 
 on:
   schedule:
-    # Roda de segunda a sexta às 9h horário de Brasília (12:00 UTC)
     - cron: '0 12 * * 1-5'
   workflow_dispatch:
-    # Permite rodar manualmente pelo site do GitHub (botão "Run workflow")
 
 jobs:
   monitorar:
@@ -21,14 +19,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
+      - name: Instalar dependências Python
+        run: pip install -r requirements.txt
+
+      - name: Instalar Chromium via apt
         run: |
-          pip install -r requirements.txt
-          playwright install chromium
-          playwright install-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Instalar Playwright (sem deps do sistema)
+        run: playwright install chromium --with-deps || playwright install-deps || true
 
       - name: Rodar monitor
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           MOVIMENTACOES_DB_ID: ${{ secrets.MOVIMENTACOES_DB_ID }}
+          PLAYWRIGHT_BROWSERS_PATH: /usr/bin
         run: python monitor_dom.py
