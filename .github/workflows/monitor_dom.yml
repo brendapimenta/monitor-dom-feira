@@ -2,8 +2,9 @@ name: Monitor Diário Oficial
 
 on:
   schedule:
-    - cron: '0 12 * * 1-5'
-  workflow_dispatch:
+    # Roda de seg a sex às 9h horário de Brasília (12h UTC)
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch:  # permite rodar manualmente
 
 jobs:
   monitorar:
@@ -11,28 +12,40 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Baixar código
+      - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Instalar dependências Python
-        run: pip install -r requirements.txt
-
-      - name: Instalar Chromium via apt
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
+          pip install --upgrade pip
+          pip install requests pypdf playwright
 
-      - name: Instalar Playwright (sem deps do sistema)
-        run: playwright install chromium --with-deps || playwright install-deps || true
+      - name: Instalar Playwright + Chromium
+        run: playwright install chromium --with-deps
 
-      - name: Rodar monitor
+      - name: Restaurar cache do DOM (evita duplicatas)
+        uses: actions/cache@v4
+        with:
+          path: dom_cache.json
+          key: dom-cache-${{ github.run_id }}
+          restore-keys: |
+            dom-cache-
+
+      - name: Executar monitor
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          MOVIMENTACOES_DB_ID: ${{ secrets.MOVIMENTACOES_DB_ID }}
-          PLAYWRIGHT_BROWSERS_PATH: /usr/bin
+          NOTION_TOKEN:    ${{ secrets.NOTION_TOKEN }}
+          MONITOR_DOM_DB_ID: ${{ secrets.MONITOR_DOM_DB_ID }}
+          NTFY_URL:        ${{ secrets.NTFY_URL }}
         run: python monitor_dom.py
+
+      - name: Salvar cache atualizado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: dom_cache.json
+          key: dom-cache-${{ github.run_id }}
