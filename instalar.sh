@@ -7,22 +7,29 @@ echo "  Instalando Monitor DOM — Feira de Santana"
 echo "=================================================="
 echo ""
 
-# Diretório do script
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "📁 Pasta: $DIR"
 
 # 1. Instalar dependências Python
 echo ""
 echo "📦 Instalando dependências Python..."
-pip3 install requests pypdf playwright --quiet
-python3 -m playwright install chromium
+pip3 install requests pypdf playwright --quiet --user
 echo "✅ Dependências instaladas"
 
-# 2. Criar os dois agendamentos via launchd (agendador nativo do Mac)
+# 2. Instalar só o chromium (sem headless shell, que está bloqueado na rede)
+echo ""
+echo "🌐 Instalando navegador Chromium..."
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 \
+  python3 -m playwright install chromium 2>/dev/null || \
+  /Users/brendapimenta/Library/Python/3.9/bin/playwright install chromium || true
+echo "✅ Chromium pronto"
+
+# 3. Criar agendamentos via launchd
 PLIST_8H=~/Library/LaunchAgents/br.gov.feiradesantana.dom.8h.plist
 PLIST_12H=~/Library/LaunchAgents/br.gov.feiradesantana.dom.12h.plist
+PYTHON_PATH=$(python3 -c "import sys; print(sys.executable)")
 
-PYTHON_PATH=$(which python3)
+mkdir -p ~/Library/LaunchAgents
 
 echo ""
 echo "⏰ Criando agendamento das 8h..."
@@ -51,8 +58,6 @@ cat > "$PLIST_8H" << PLIST
     <string>$DIR/monitor_dom.log</string>
     <key>StandardErrorPath</key>
     <string>$DIR/monitor_dom_erro.log</string>
-    <key>RunAtLoad</key>
-    <false/>
 </dict>
 </plist>
 PLIST
@@ -83,13 +88,11 @@ cat > "$PLIST_12H" << PLIST
     <string>$DIR/monitor_dom.log</string>
     <key>StandardErrorPath</key>
     <string>$DIR/monitor_dom_erro.log</string>
-    <key>RunAtLoad</key>
-    <false/>
 </dict>
 </plist>
 PLIST
 
-# 3. Ativar os agendamentos
+# 4. Ativar agendamentos
 echo ""
 echo "🔄 Ativando agendamentos..."
 launchctl unload "$PLIST_8H" 2>/dev/null || true
@@ -102,13 +105,8 @@ echo "=================================================="
 echo "  ✅ INSTALAÇÃO CONCLUÍDA!"
 echo "=================================================="
 echo ""
-echo "  ⏰ Rodará automaticamente:"
-echo "     • Todos os dias às 8h00"
-echo "     • Todos os dias às 12h00"
+echo "  ⏰ Rodará automaticamente às 8h e às 12h"
 echo ""
-echo "  📋 Para testar agora:"
+echo "  🧪 Para testar agora, rode:"
 echo "     python3 $DIR/monitor_dom.py"
-echo ""
-echo "  📄 Logs em:"
-echo "     $DIR/monitor_dom.log"
 echo ""
