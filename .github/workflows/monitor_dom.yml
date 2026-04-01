@@ -2,8 +2,9 @@ name: Monitor Diário Oficial
 
 on:
   schedule:
-    # Roda de seg a sex às 9h horário de Brasília (12h UTC)
-    - cron: "0 12 * * 1-5"
+    # 8h Brasília = 11h UTC | 12h Brasília = 15h UTC — seg a sex
+    - cron: "0 11 * * 1-5"
+    - cron: "0 15 * * 1-5"
   workflow_dispatch:  # permite rodar manualmente
 
 jobs:
